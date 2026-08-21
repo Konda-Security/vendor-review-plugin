@@ -99,6 +99,30 @@ Prompt the agent to:
 - Look for: D&B risk rating, BBB rating and complaint history, active or recent lawsuits, regulatory fines or enforcement actions, analyst coverage and positioning, general media sentiment, Glassdoor rating (as a stability signal)
 - Return structured reputational data with sources
 
+### Agent 8: AI Risk Assessment
+Prompt the agent to:
+- WebFetch the vendor's website looking for AI/ML product features, AI-related pages, or AI governance documentation
+- WebSearch for `"<vendor name>" "artificial intelligence" OR "machine learning" OR "AI" OR "ML model" OR "generative AI" OR "LLM"`
+- WebSearch for `"<vendor name>" "AI governance" OR "responsible AI" OR "AI ethics" OR "model card" OR "AI transparency" OR "algorithmic bias"`
+- WebSearch for `"<vendor name>" "EU AI Act" OR "NIST AI" OR "AI risk management" OR "AI audit"`
+- WebSearch for `"<vendor name>" AI bias OR AI controversy OR AI discrimination OR AI hallucination OR "AI incident"`
+- Determine: does the vendor use AI in its products/services? If so, in what capacity (core product, feature enhancement, internal tooling)?
+- Look for: published AI governance framework, model cards or documentation, bias testing disclosures, human oversight mechanisms, AI-related certifications or assessments, EU AI Act compliance posture, NIST AI RMF alignment
+- If the vendor does not appear to use AI, note that clearly so this dimension can be marked N/A
+- Return structured AI risk data with evidence
+
+### Agent 9: Export Control & Sanctions Risk
+Prompt the agent to:
+- WebSearch for `"<vendor name>" ITAR OR EAR OR "export control" OR "export compliance" OR "dual use"`
+- WebSearch for `"<vendor name>" OFAC OR sanctions OR "denied parties" OR "entity list" OR "SDN list"`
+- WebSearch for `"<vendor name>" headquarters OR offices OR locations OR operations` to map jurisdictional presence
+- WebSearch for `"<vendor name>" Russia OR China OR Iran OR "North Korea" OR Cuba OR Syria OR Belarus` (sanctioned/high-risk jurisdictions)
+- WebSearch for `"<vendor name>" "export violation" OR "sanctions violation" OR "BIS" OR "bureau of industry"`
+- WebFetch any export compliance or trade compliance pages on the vendor's site
+- Look for: country of incorporation and headquarters, office locations (especially in sanctioned or high-risk countries), published export compliance program, any OFAC SDN or BIS Entity List matches for the company name or key executives, technology classification under EAR/ITAR, history of export control violations or investigations, supply chain country-of-origin concerns
+- Note: common-name matches on sanctions lists require careful evaluation — flag but do not auto-score as a match
+- Return structured export control risk data with evidence
+
 ## Synthesis Phase
 
 After all agents return, synthesize their findings:
@@ -110,6 +134,8 @@ After all agents return, synthesize their findings:
    - Privacy Practices (1–5)
    - Compliance (1–5)
    - Breach History (1–5)
+   - AI Risk (1–5, or N/A if vendor does not use AI)
+   - Export Control Risk (1–5)
    - Financial Health (1–5)
    - Reputational Risk (1–5)
    - Leadership Stability (1–5)

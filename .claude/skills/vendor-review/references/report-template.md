@@ -44,12 +44,14 @@ Use this template structure for all vendor review reports.
 
 | Dimension              | Score | Weight | Weighted | Evidence Summary                     |
 |------------------------|-------|--------|----------|--------------------------------------|
-| Security Posture       | X/5   | 20%    | X.XX     | [one-line evidence summary]          |
-| Privacy Practices      | X/5   | 15%    | X.XX     | [one-line evidence summary]          |
-| Compliance             | X/5   | 15%    | X.XX     | [one-line evidence summary]          |
-| Breach History         | X/5   | 15%    | X.XX     | [one-line evidence summary]          |
-| Financial Health       | X/5   | 10%    | X.XX     | [one-line evidence summary]          |
-| Reputational Risk      | X/5   | 10%    | X.XX     | [one-line evidence summary]          |
+| Security Posture       | X/5   | 15%    | X.XX     | [one-line evidence summary]          |
+| Privacy Practices      | X/5   | 12%    | X.XX     | [one-line evidence summary]          |
+| Compliance             | X/5   | 12%    | X.XX     | [one-line evidence summary]          |
+| Breach History         | X/5   | 12%    | X.XX     | [one-line evidence summary]          |
+| AI Risk                | X/5   | 10%    | X.XX     | [one-line evidence summary]          |
+| Export Control Risk    | X/5   | 8%     | X.XX     | [one-line evidence summary]          |
+| Financial Health       | X/5   | 8%     | X.XX     | [one-line evidence summary]          |
+| Reputational Risk      | X/5   | 8%     | X.XX     | [one-line evidence summary]          |
 | Leadership Stability   | X/5   | 5%     | X.XX     | [one-line evidence summary]          |
 | Transparency           | X/5   | 10%    | X.XX     | [one-line evidence summary]          |
 | **Overall**            |       |        | **X.XX** |                                      |
@@ -121,7 +123,52 @@ Use this template structure for all vendor review reports.
 
 ---
 
-### 5. Financial Health (Score: X/5)
+### 5. AI Risk (Score: X/5)
+
+#### What We Found
+[Analysis of the vendor's use of AI/ML in their products and services. Assessment of AI governance framework, model transparency, bias controls, regulatory compliance (EU AI Act, NIST AI RMF), and any AI-related incidents or controversies.]
+
+#### AI Usage Identified
+| AI Feature/Use Case   | Risk Level | Governance | Notes           |
+|-----------------------|------------|------------|-----------------|
+| [feature]             | [H/M/L/N/A] | [Y/N/Unknown] | [notes]     |
+
+#### Key Evidence
+- [bullet points]
+
+#### Gaps or Concerns
+- [identified gaps]
+
+*If the vendor does not use AI, note that explicitly and mark this dimension N/A.*
+
+---
+
+### 6. Export Control Risk (Score: X/5)
+
+#### What We Found
+[Analysis of the vendor's exposure to export control regulations (ITAR, EAR), sanctions compliance (OFAC), entity list screening (BIS), country-of-origin risk for technology and personnel, and any prior export control violations or investigations.]
+
+#### Jurisdictional Presence
+| Jurisdiction          | Presence Type    | Risk Level | Notes           |
+|-----------------------|------------------|------------|-----------------|
+| [country]             | [HQ/Office/R&D/Data Center] | [H/M/L] | [notes]  |
+
+#### Screening Results
+| Database              | Match Found | Details                                  |
+|-----------------------|-------------|------------------------------------------|
+| OFAC SDN List         | [Y/N]       | [details if match]                       |
+| BIS Entity List       | [Y/N]       | [details if match]                       |
+| BIS Denied Persons    | [Y/N]       | [details if match]                       |
+
+#### Key Evidence
+- [bullet points]
+
+#### Gaps or Concerns
+- [identified gaps]
+
+---
+
+### 7. Financial Health (Score: X/5)
 
 #### What We Found
 [For public companies: revenue trends, profitability, debt levels, stock performance, analyst ratings. For private companies: funding history, employee growth/contraction, customer indicators, any available financial data.]
@@ -142,7 +189,7 @@ Use this template structure for all vendor review reports.
 
 ---
 
-### 6. Reputational Risk (Score: X/5)
+### 8. Reputational Risk (Score: X/5)
 
 #### What We Found
 [D&B rating if available, BBB rating, major lawsuits, regulatory actions, analyst coverage, Glassdoor ratings as a stability signal, media sentiment.]
@@ -155,7 +202,7 @@ Use this template structure for all vendor review reports.
 
 ---
 
-### 7. Leadership Stability (Score: X/5)
+### 9. Leadership Stability (Score: X/5)
 
 #### What We Found
 [CEO and CISO tenure, recent executive departures, board composition, governance structure, key-person dependencies.]
@@ -172,7 +219,7 @@ Use this template structure for all vendor review reports.
 
 ---
 
-### 8. Transparency (Score: X/5)
+### 10. Transparency (Score: X/5)
 
 #### What We Found
 [Availability of trust center, status page, security whitepapers, transparency reports, bug bounty program, responsible disclosure policy, third-party audit availability.]
@@ -206,6 +253,8 @@ This assessment was conducted using publicly available information including:
 - Financial filings and market data (for public companies)
 - Business reputation databases
 - Leadership and governance information
+- AI governance disclosures and model documentation
+- Export control databases (OFAC SDN, BIS Entity List, BIS Denied Persons)
 
 **Limitations:** This assessment is based on publicly available information as of the assessment date. It does not include:
 - Penetration testing or technical vulnerability assessment

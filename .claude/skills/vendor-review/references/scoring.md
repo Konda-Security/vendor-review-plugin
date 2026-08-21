@@ -2,18 +2,20 @@
 
 ## Overview
 
-The vendor risk score is a weighted composite of eight assessment dimensions. Each dimension is scored 1–5. The overall score is a weighted average, also expressed 1–5.
+The vendor risk score is a weighted composite of ten assessment dimensions. Each dimension is scored 1–5. The overall score is a weighted average, also expressed 1–5.
 
 ## Dimensions and Weights
 
 | Dimension              | Weight | Description                                                        |
 |------------------------|--------|--------------------------------------------------------------------|
-| Security Posture       | 20%    | Published security practices, certifications, vulnerability mgmt   |
-| Privacy Practices      | 15%    | Privacy policy quality, data handling transparency, GDPR/CCPA      |
-| Compliance             | 15%    | SOC 2/3, ISO 27001, HIPAA, PCI DSS, FedRAMP, other frameworks     |
-| Breach History         | 15%    | Public breach record, incident response track record               |
-| Financial Health       | 10%    | Revenue stability, funding, profitability, going-concern risk      |
-| Reputational Risk      | 10%    | D&B rating, BBB, lawsuits, regulatory actions, media coverage      |
+| Security Posture       | 15%    | Published security practices, certifications, vulnerability mgmt   |
+| Privacy Practices      | 12%    | Privacy policy quality, data handling transparency, GDPR/CCPA      |
+| Compliance             | 12%    | SOC 2/3, ISO 27001, HIPAA, PCI DSS, FedRAMP, other frameworks     |
+| Breach History         | 12%    | Public breach record, incident response track record               |
+| AI Risk                | 10%    | AI governance, model transparency, bias controls, EU AI Act/NIST   |
+| Export Control Risk    | 8%     | ITAR, EAR, OFAC sanctions, entity list, country-of-origin risk     |
+| Financial Health       | 8%     | Revenue stability, funding, profitability, going-concern risk      |
+| Reputational Risk      | 8%     | D&B rating, BBB, lawsuits, regulatory actions, media coverage      |
 | Leadership Stability   | 5%     | Executive turnover, key-person risk, governance structure           |
 | Transparency           | 10%    | Openness about practices, public reporting, third-party audits     |
 
@@ -52,6 +54,29 @@ The vendor risk score is a weighted composite of eight assessment dimensions. Ea
 - Clean breach history with proactive disclosure program
 - Strong financial position with diversified revenue
 - Excellent reputation, recognized by analysts
+
+## Dimension-Specific Rubrics
+
+### AI Risk
+
+| Score | Criteria |
+|-------|----------|
+| 5     | Published AI governance framework; model cards or transparency documentation for AI features; bias testing and audit results disclosed; compliant with EU AI Act and/or NIST AI RMF; independent AI audit; clear human oversight mechanisms |
+| 4     | AI usage disclosed with reasonable detail; internal governance described; bias mitigation mentioned; proactive engagement with AI regulation; no known AI-related incidents |
+| 3     | AI usage acknowledged but governance details sparse; no public model documentation; compliance posture unclear; no AI-specific incidents but limited transparency |
+| 2     | AI usage suspected or confirmed but undisclosed or poorly documented; no visible governance; past AI-related controversies (bias, hallucination, misuse); no regulatory engagement |
+| 1     | AI usage with known harmful outcomes; active regulatory action related to AI; no governance or transparency; AI used in high-risk contexts (hiring, credit, law enforcement) without safeguards |
+| N/A   | Vendor does not use AI in its products or services — exclude from scoring |
+
+### Export Control Risk
+
+| Score | Criteria |
+|-------|----------|
+| 5     | Headquartered in low-risk jurisdiction; no presence in sanctioned countries; published export compliance program; no BIS Entity List or OFAC SDN matches; clear country-of-origin documentation for technology components |
+| 4     | Low-risk jurisdiction; export compliance program referenced; no sanctions matches found; minor presence in moderate-risk jurisdictions with appropriate controls |
+| 3     | Operations in some moderate-risk jurisdictions; export compliance program not publicly documented but no sanctions flags; some supply chain opacity |
+| 2     | Operations or key personnel in high-risk jurisdictions; partial OFAC/BIS matches (e.g., common-name hits needing investigation); dual-use technology with unclear export controls; prior export control warnings |
+| 1     | Entity List match; OFAC SDN match; headquartered in or substantial operations in sanctioned countries; known export control violations; technology subject to ITAR with no visible compliance program |
 
 ## Overall Risk Rating
 
