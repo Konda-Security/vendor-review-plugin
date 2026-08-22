@@ -21,8 +21,8 @@ If no argument was provided, ask the user for the vendor URL or company name bef
 
 Before starting research, ask the user:
 
-1. **Which client is this vendor review for?** (e.g., "General.Legal", "Acme Corp", or "internal use")
-2. **Where should the report and PDF be delivered?** Ask for the client's vendor review directory path (e.g., `~/MKWork/kondasecurity/general.legal/security/vendor-review/reviews/`).
+1. **Which client is this vendor review for?** (e.g., a client name, project name, or "internal use")
+2. **Where should the report and PDF be delivered?** Ask for the client's vendor review directory path (e.g., `~/clients/acme-corp/security/vendor-review/reviews/`).
 
 If the user has done reviews in this session before, offer the same client and path as a default. If the user says "same client" or "same as before," reuse the previous values.
 
