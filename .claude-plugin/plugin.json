@@ -1,10 +1,10 @@
 {
   "name": "vendor-review",
+  "version": "1.0.0",
   "description": "Comprehensive third-party vendor security and risk assessment. Researches vendors across 10 dimensions (security, privacy, compliance, breaches, AI risk, export controls, financials, reputation, leadership, transparency), scores each 1-5, and generates timestamped markdown reports with PDF export.",
   "author": {
     "name": "Konda Security",
     "email": "matt@kondasecurity.com"
   },
-  "category": "security",
   "homepage": "https://github.com/Konda-Security/vendor-review-plugin"
 }
