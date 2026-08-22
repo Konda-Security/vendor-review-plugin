@@ -35,6 +35,27 @@ When you run `/vendor-review`, the plugin:
 | 1.5 – 2.4  | High Risk      | Discourage                 |
 | 1.0 – 1.4  | Critical Risk  | Do Not Approve             |
 
+## Requirements
+
+This plugin is built for **Claude Code** — Anthropic's CLI agent for software engineering. It is not compatible with regular Claude (claude.ai web/app), Claude for Slack, or Claude mobile. The plugin relies on Claude Code's agent spawning, WebFetch, WebSearch, and file system access — none of which exist in other Claude interfaces.
+
+### What You Need
+
+- **Claude Code** installed and authenticated ([installation guide](https://docs.anthropic.com/en/docs/claude-code))
+- **Claude Code plan** with access to Agent, WebFetch, and WebSearch tools (Pro, Team, or Enterprise)
+- **pandoc** (optional, for automatic PDF generation) — install via `brew install pandoc` (macOS) or your package manager
+- **xelatex** (optional, for higher-quality PDF output) — install via `brew install --cask mactex` or `tlmgr install xelatex`
+
+### How It Works in Claude Code
+
+1. The plugin registers as a **skill** — a slash command that Claude Code discovers automatically from `.claude/skills/vendor-review/SKILL.md`
+2. When you invoke `/vendor-review <url>`, Claude Code reads the SKILL.md instructions and follows them
+3. The skill spawns **9 parallel research agents** — each is a separate Claude Code subagent that runs WebFetch and WebSearch independently
+4. After all agents report back, the main session synthesizes findings, scores dimensions, and generates the report
+5. The report is written locally, converted to PDF, and optionally delivered to a client directory
+
+A typical assessment takes 2–5 minutes depending on the vendor's size and the amount of publicly available information.
+
 ## Installation
 
 ### Local Use (Single Machine)
@@ -89,22 +110,43 @@ Start a new Claude Code session and type `/vendor-review` — it should appear i
 ```
 
 The plugin will:
-- Ask for clarification if the input is ambiguous
-- Run 9 research agents in parallel (takes 1–3 minutes depending on the vendor)
-- Display the executive summary and scorecard in the conversation
-- Write the full report to `reports/<vendor-slug>-<YYYY-MM-DD>.md`
+1. **Ask which client** this review is for and where to deliver the report
+2. Run 9 research agents in parallel (takes 2–5 minutes depending on the vendor)
+3. Generate both markdown and PDF reports
+4. Copy reports to the client's delivery directory
+5. Update the client's `approved-services.md` tracker (if one exists)
+6. Display the executive summary and scorecard in the conversation
 
-### Converting to PDF
+For subsequent reviews in the same session, you can say "same client" to skip the client context step.
 
-After the report is generated, convert it to PDF for sharing:
+### Multi-Client Workflow
+
+The plugin is designed for consultants and security teams managing vendor reviews across multiple clients or projects. Each client gets their own delivery directory and approved-services tracker:
+
+```
+~/clients/
+├── acme-corp/
+│   └── security/vendor-review/
+│       ├── approved-services.md      # Auto-maintained by the plugin
+│       └── reviews/
+│           ├── datadog-2026-08-21.md
+│           └── datadog-2026-08-21.pdf
+└── other-client/
+    └── security/vendor-review/
+        ├── approved-services.md
+        └── reviews/
+            └── ...
+```
+
+If a client doesn't have an `approved-services.md` yet, the plugin offers to create one from a built-in template.
+
+### Manual PDF Conversion
+
+If pandoc is not installed or automatic PDF generation fails, you can convert manually:
 
 ```bash
-# Using pandoc (recommended)
-pandoc reports/datadog-2026-08-21.md -o reports/datadog-2026-08-21.pdf
-
-# Using pandoc with better formatting
-pandoc reports/datadog-2026-08-21.md \
-  -o reports/datadog-2026-08-21.pdf \
+pandoc reports/vendor-name-2026-08-21.md \
+  -o reports/vendor-name-2026-08-21.pdf \
   --pdf-engine=xelatex \
   -V geometry:margin=1in \
   -V fontsize=11pt
@@ -120,22 +162,28 @@ vendor-review-plugin/
 ├── README.md                          # This file
 ├── CLAUDE.md                          # Claude Code project context
 ├── .gitignore
+├── .claude-plugin/
+│   └── plugin.json                    # Marketplace manifest
 ├── reports/                           # Generated reports (gitignored)
 │   └── .gitkeep
 └── .claude/
+    ├── settings.json                  # Auto-allows WebFetch/WebSearch
     └── skills/
         └── vendor-review/
             ├── SKILL.md               # Main skill — orchestration logic
             └── references/
                 ├── scoring.md         # Scoring methodology and rubric
-                └── report-template.md # Markdown report template
+                ├── report-template.md # Markdown report template
+                └── approved-services-template.md  # Client tracker template
 ```
 
 ### Key Files
 
-- **`SKILL.md`** — The core of the plugin. Defines the agent prompts, research methodology, synthesis logic, and report generation instructions. This is what Claude Code executes when you invoke `/vendor-review`.
+- **`SKILL.md`** — The core of the plugin. Defines the client context workflow, agent prompts, research methodology, synthesis logic, report generation, and client delivery instructions. This is what Claude Code executes when you invoke `/vendor-review`.
 - **`references/scoring.md`** — The weighted scoring rubric. Edit this to change dimension weights, add dimensions, or modify the 1–5 scoring criteria.
 - **`references/report-template.md`** — The markdown template for generated reports. Edit this to change report structure, add sections, or modify formatting.
+- **`references/approved-services-template.md`** — Template for client approved-services trackers. Created automatically for new clients.
+- **`.claude/settings.json`** — Pre-approves WebFetch and WebSearch across all domains so research agents don't trigger per-domain permission prompts.
 
 ## Customization
 
