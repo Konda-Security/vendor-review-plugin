@@ -92,17 +92,37 @@ Use this template structure for all vendor review reports.
 [Analysis of SOC 2 Type I/II, SOC 3, ISO 27001, HIPAA, PCI DSS, FedRAMP, GDPR adequacy, and any other relevant compliance frameworks.]
 
 #### Certifications Identified
-| Certification    | Status      | Date/Validity | Notes           |
-|------------------|-------------|---------------|-----------------|
-| SOC 2 Type II    | [Y/N/Unknown] | [date if known] | [notes]       |
-| ISO 27001        | [Y/N/Unknown] | [date if known] | [notes]       |
-| [etc.]           |             |               |                 |
+| Certification    | Status        | Audit Firm    | Audit Period       | Notes           |
+|------------------|---------------|---------------|--------------------|-----------------|
+| SOC 2 Type II    | [Y/N/Unknown] | [firm name]   | [start – end date] | [notes]         |
+| ISO 27001        | [Y/N/Unknown] | [cert body]   | [validity period]  | [notes]         |
+| [etc.]           |               |               |                    |                 |
+
+#### Audit Scope Analysis
+
+**⚠ Action Required for Report Consumer:** Confirm that the services your organization uses from this vendor fall within the audited scope described below. Services outside this scope are NOT covered by the vendor's audit attestations.
+
+**Scope summary (plain language):**
+[Restate the audit scope in simple terms: which specific systems, services, products, and facilities are covered. Note the Trust Service Criteria covered (e.g., Security, Availability, Confidentiality).]
+
+**Carve-outs and exclusions:**
+- [Subservice organizations excluded via carve-out method (e.g., AWS, MongoDB Atlas)]
+- [Vendor products or services NOT covered by the audit]
+- [Geographic or organizational boundaries of the audit]
+
+#### Audit Exceptions, OFIs & Findings
+
+*If no exceptions or findings were identified, state that explicitly (e.g., "Unqualified opinion with no exceptions noted").*
+
+| Finding | Type | Control Objective | What Happened | Management Response | Assessment |
+|---------|------|-------------------|---------------|---------------------|------------|
+| [#]     | [Exception / OFI / Deviation / Qualified Opinion] | [What the control was supposed to do] | [What went wrong or was flagged] | [Management's response — specific & time-bound, or vague?] | [Recurring? Root cause addressed? Material?] |
 
 #### Key Evidence
 - [bullet points]
 
 #### Gaps or Concerns
-- [identified gaps]
+- [identified gaps — include any services outside audit scope, recurring findings, or vague management responses]
 
 ---
 

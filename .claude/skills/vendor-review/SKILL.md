@@ -59,7 +59,28 @@ Prompt the agent to:
 - Look for: SOC 2 Type I and Type II reports, SOC 3 reports, ISO 27001 certificates, HIPAA BAA availability, PCI DSS attestation, FedRAMP authorization, HITRUST certification, CSA STAR listing, any other compliance frameworks
 - Note whether certifications are current, expired, or self-claimed vs. independently audited
 - If SOC 3 reports or compliance summaries are publicly downloadable, fetch and analyze them
-- Return structured compliance data with evidence
+
+**Audit Report Deep Analysis — when reports are accessible (SOC 2 Type II, SOC 3, ISO certificates, etc.), the agent MUST:**
+
+1. **Extract and simplify the audit scope.** Identify exactly which systems, services, products, facilities, and trust service criteria (e.g., Security, Availability, Confidentiality, Processing Integrity, Privacy) are covered by the audit. Restate the scope in plain language so a non-auditor can understand what is and is not covered. Flag any carve-outs (e.g., subservice organizations excluded via the carve-out method) and any services the vendor offers that appear to fall OUTSIDE the audit scope.
+
+2. **Surface all exceptions, qualifications, and findings.** Look for:
+   - **Qualified opinions** (any deviation from an unqualified/clean opinion)
+   - **Exceptions** to control objectives (controls that were not operating effectively during the audit period)
+   - **Opportunities for Improvement (OFIs)** — these are not failures but signal areas the auditor flagged as needing attention
+   - **Control failures** — controls that did not achieve their stated objective
+   - **Deviations** noted in testing
+   - For each finding: state what the control was supposed to do, what went wrong, and how material it is
+
+3. **Evaluate management responses.** For each exception or finding, check whether management provided a response. Assess:
+   - Did management acknowledge the issue or dispute it?
+   - Is the remediation plan specific and time-bound, or vague?
+   - Has the issue appeared in prior audit periods (recurring finding)?
+   - Does the management response actually address the root cause?
+
+4. **Note the audit firm, audit period, and report date.** Identify how recent the report is, whether bridge letters exist extending coverage, and whether the audit firm is a recognized, independent CPA firm.
+
+- Return structured compliance data with evidence, including scope summary, exceptions/OFIs with management responses, and audit metadata
 
 ### Agent 5: Breach History & Incident Research
 Prompt the agent to:
