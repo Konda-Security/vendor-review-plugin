@@ -17,6 +17,19 @@ If this is a URL, use it as the vendor's primary website. If it's a company name
 
 If no argument was provided, ask the user for the vendor URL or company name before proceeding.
 
+## Client Context
+
+Before starting research, ask the user:
+
+1. **Which client is this vendor review for?** (e.g., "Acme Corp" or "internal use")
+2. **Where should the report and PDF be delivered?** Ask for the client's vendor review directory path (e.g., `~/clients/acme-corp/security/vendor-review/reviews/`).
+
+If the user has done reviews in this session before, offer the same client and path as a default. If the user says "same client" or "same as before," reuse the previous values.
+
+Once the client directory is confirmed:
+- Check if an `approved-services.md` file exists in the parent directory of the reports path (e.g., one level up from `reviews/`). If it does not exist, offer to create one from the template at `references/approved-services-template.md`, substituting the client name.
+- Store the client name and delivery path for use in the Post-Report phase.
+
 ## Preparation
 
 1. Read the scoring methodology from `references/scoring.md` (relative to this skill's directory).
@@ -199,14 +212,29 @@ Ensure the `reports/` directory exists (create it if not).
 
 ## Post-Report
 
-After writing the report:
+After writing the report to `./reports/`:
 
+### 1. Generate PDF
+If `pandoc` is available, generate a PDF automatically:
+```
+pandoc <report-path> -o <report-path>.pdf --pdf-engine=xelatex -V geometry:margin=1in -V fontsize=11pt -V colorlinks=true
+```
+If `xelatex` is not available, try `--pdf-engine=pdflatex` or `wkhtmltopdf`. If no PDF engine is available, inform the user and suggest they install pandoc.
+
+### 2. Deliver to Client Directory
+Copy both the markdown and PDF to the client delivery directory confirmed in the Client Context step. Verify the files arrived with `ls -la`.
+
+### 3. Update Approved Services Tracker
+If an `approved-services.md` exists in the client's vendor review directory (parent of the reports path):
+- Read the current file
+- Add or update the row for the assessed vendor with: vendor name, service description, SOC 2 status, review date, and status (Approved/Conditional/Discouraged/Denied) based on the risk score, including the score and a brief note on key conditions
+- Update the "Last reviewed" date
+- Ask the user to confirm the update before writing
+
+### 4. Display Summary
 1. Display the **Executive Summary** and **Scorecard** in the conversation.
-2. Tell the user the full report path.
-3. Inform the user they can convert to PDF using:
-   - `pandoc <report-path> -o <report-path>.pdf` (if pandoc is installed)
-   - Or by opening the markdown in a viewer that supports PDF export
-4. Ask if the user wants to drill deeper into any specific dimension or if any findings need correction.
+2. Tell the user the full report path (both local and client directory).
+3. Ask if the user wants to drill deeper into any specific dimension or if any findings need correction.
 
 ## Important Guidelines
 
