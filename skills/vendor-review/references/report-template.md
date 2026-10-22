@@ -9,8 +9,13 @@ Use this template structure for all vendor review reports.
 
 **Vendor:** [Company Name]
 **Website:** [URL]
-**Assessment Date:** [YYYY-MM-DD HH:MM UTC]
-**Assessor:** AI-Assisted (Claude Code — Vendor Review Plugin)
+**Record type:** Full review
+**Assessment Date:** [YYYY-MM-DD HH:MM] UTC
+**Assessor:** AI-assisted (Claude Code, tprm plugin)
+**Client:** [client from tprm.json]
+**Entities:** [only when tprm.json configures entities]
+**Request:** [issue link, "form submission", or "none"]
+**Related reviews:** [relative paths, only for vendor families]
 **Report Version:** 1.0
 
 ---
@@ -38,6 +43,16 @@ Use this template structure for all vendor review reports.
 | Primary Products   | [key products/services]   |
 | Key Customers      | [notable customers, if public] |
 
+### Deployment Context
+
+| Item | Detail | Source |
+|------|--------|--------|
+| Intended use | [what the vendor does for the client] | [request, user] |
+| Data | [data the vendor receives or can reach] | [request, user] |
+| Internal owner | [person, or "to confirm"] | [request] |
+| Contract | [existing, evaluating, free tier] | [request] |
+| Entities | [only when configured] | [request, user] |
+
 ---
 
 ## Scorecard
@@ -55,6 +70,20 @@ Use this template structure for all vendor review reports.
 | Leadership Stability   | X/5   | 5%     | X.XX     | [one-line evidence summary]          |
 | Transparency           | X/5   | 10%    | X.XX     | [one-line evidence summary]          |
 | **Overall**            |       |        | **X.XX** |                                      |
+
+<!-- Include only when tiers were scored separately. -->
+### Tier Ratings
+
+| Tier | Overall Score | Rating | Recommendation | What differs |
+|------|---------------|--------|----------------|--------------|
+| [e.g., Enterprise] | X.XX | [Rating] | [Recommendation] | [terms, certifications, controls that differ] |
+
+---
+
+<!-- Include only when an evidence review exists for this vendor. -->
+## Vendor-Provided Evidence
+
+[Summarize the evidence review record at `[path]`: documents reviewed, report periods, opinions, scope gaps, exceptions, and the user-entity controls the client must operate. Link the record rather than repeating it.]
 
 ---
 
