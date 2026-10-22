@@ -48,7 +48,7 @@ This plugin is built for **Claude Code** — Anthropic's CLI agent for software 
 
 ### How It Works in Claude Code
 
-1. The plugin registers as a **skill** — a slash command that Claude Code discovers automatically from `.claude/skills/vendor-review/SKILL.md`
+1. The plugin registers as a **skill** — a slash command that Claude Code discovers from `skills/vendor-review/SKILL.md` when the plugin is loaded (for example, `claude --plugin-dir /path/to/vendor-review-plugin`)
 2. When you invoke `/vendor-review <url>`, Claude Code reads the SKILL.md instructions and follows them
 3. The skill spawns **9 parallel research agents** — each is a separate Claude Code subagent that runs WebFetch and WebSearch independently
 4. After all agents report back, the main session synthesizes findings, scores dimensions, and generates the report
@@ -60,28 +60,28 @@ A typical assessment takes 2–5 minutes depending on the vendor's size and the 
 
 ### Local Use (Single Machine)
 
-Clone the repo into your Claude Code skills directory:
-
-```bash
-mkdir -p ~/.claude/skills
-git clone git@github.com:Konda-Security/vendor-review-plugin.git ~/.claude/skills/vendor-review
-```
-
-Alternatively, symlink from wherever you cloned it:
+Clone the repo and load it as a plugin when you start Claude Code:
 
 ```bash
 git clone git@github.com:Konda-Security/vendor-review-plugin.git ~/path/to/vendor-review-plugin
-ln -s ~/path/to/vendor-review-plugin/.claude/skills/vendor-review ~/.claude/skills/vendor-review
+claude --plugin-dir ~/path/to/vendor-review-plugin
+```
+
+To make the skill available in every session without the flag, symlink it into your personal skills directory:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s ~/path/to/vendor-review-plugin/skills/vendor-review ~/.claude/skills/vendor-review
 ```
 
 ### Project-Level Use
 
-To make the plugin available only within a specific project, clone or copy the `.claude/skills/vendor-review` directory into that project's `.claude/skills/` folder:
+To make the plugin available only within a specific project, copy the `skills/vendor-review` directory into that project's `.claude/skills/` folder:
 
 ```bash
 cd your-project
 mkdir -p .claude/skills
-cp -r /path/to/vendor-review-plugin/.claude/skills/vendor-review .claude/skills/vendor-review
+cp -r /path/to/vendor-review-plugin/skills/vendor-review .claude/skills/vendor-review
 ```
 
 Or add this repo as a git submodule:
@@ -164,17 +164,19 @@ vendor-review-plugin/
 ├── .gitignore
 ├── .claude-plugin/
 │   └── plugin.json                    # Marketplace manifest
+├── skills/
+│   └── vendor-review/
+│       ├── SKILL.md                   # Main skill — orchestration logic
+│       └── references/
+│           ├── scoring.md             # Scoring methodology and rubric
+│           ├── report-template.md     # Markdown report template
+│           └── approved-services-template.md  # Client tracker template
 ├── reports/                           # Generated reports (gitignored)
 │   └── .gitkeep
 └── .claude/
     ├── settings.json                  # Auto-allows WebFetch/WebSearch
     └── skills/
-        └── vendor-review/
-            ├── SKILL.md               # Main skill — orchestration logic
-            └── references/
-                ├── scoring.md         # Scoring methodology and rubric
-                ├── report-template.md # Markdown report template
-                └── approved-services-template.md  # Client tracker template
+        └── vendor-review -> ../../skills/vendor-review  # Symlink for in-repo use
 ```
 
 ### Key Files
