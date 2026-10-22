@@ -48,7 +48,7 @@ This plugin is built for **Claude Code** — Anthropic's CLI agent for software 
 
 ### How It Works in Claude Code
 
-1. The plugin registers as a **skill** — a slash command that Claude Code discovers from `skills/vendor-review/SKILL.md` when the plugin is loaded (for example, `claude --plugin-dir /path/to/vendor-review-plugin`)
+1. The plugin registers as a **skill** — a slash command that Claude Code discovers from `skills/vendor-review/SKILL.md` when the plugin is installed from the marketplace or loaded with `claude --plugin-dir /path/to/vendor-review-plugin`
 2. When you invoke `/vendor-review <url>`, Claude Code reads the SKILL.md instructions and follows them
 3. The skill spawns **9 parallel research agents** — each is a separate Claude Code subagent that runs WebFetch and WebSearch independently
 4. After all agents report back, the main session synthesizes findings, scores dimensions, and generates the report
@@ -58,7 +58,41 @@ A typical assessment takes 2–5 minutes depending on the vendor's size and the 
 
 ## Installation
 
-### Local Use (Single Machine)
+### From the Konda Security Marketplace (Recommended)
+
+In a Claude Code session, add the marketplace and install the plugin:
+
+```
+/plugin marketplace add https://kondasecurity.com/claude/marketplace.json
+/plugin install vendor-review@konda-security
+```
+
+Or do both in one step (Claude Code 2.1.275 or later):
+
+```
+/plugin install vendor-review --marketplace https://kondasecurity.com/claude/marketplace.json
+```
+
+The same commands work from your shell as `claude plugin marketplace add ...` and `claude plugin install ...`. Start a new session (or run `/reload-plugins`) after installing.
+
+### Sharing With a Project Team
+
+To register the plugin for everyone who works in a repository, run these once from the repository root and commit the `.claude/settings.json` they write:
+
+```bash
+claude plugin marketplace add https://kondasecurity.com/claude/marketplace.json --scope project
+claude plugin install vendor-review@konda-security --scope project
+```
+
+Or copy the skill directly into that project's `.claude/skills/` folder:
+
+```bash
+cd your-project
+mkdir -p .claude/skills
+cp -r /path/to/vendor-review-plugin/skills/vendor-review .claude/skills/vendor-review
+```
+
+### From a Local Clone
 
 Clone the repo and load it as a plugin when you start Claude Code:
 
@@ -74,26 +108,13 @@ mkdir -p ~/.claude/skills
 ln -s ~/path/to/vendor-review-plugin/skills/vendor-review ~/.claude/skills/vendor-review
 ```
 
-### Project-Level Use
+### Updating
 
-To make the plugin available only within a specific project, copy the `skills/vendor-review` directory into that project's `.claude/skills/` folder:
-
-```bash
-cd your-project
-mkdir -p .claude/skills
-cp -r /path/to/vendor-review-plugin/skills/vendor-review .claude/skills/vendor-review
-```
-
-Or add this repo as a git submodule:
-
-```bash
-cd your-project
-git submodule add git@github.com:Konda-Security/vendor-review-plugin.git .claude/plugins/vendor-review
-```
+Marketplace installs are cached and only change when the plugin's version changes. To pick up a new release, run `/plugin marketplace update konda-security` in a session, or `claude plugin update vendor-review@konda-security` from your shell. To receive releases automatically, open `/plugin`, go to **Marketplaces**, select `konda-security`, and choose **Enable auto-update**.
 
 ### Verify Installation
 
-Start a new Claude Code session and type `/vendor-review` — it should appear in the skill list. You can also check with `/help` to see available commands.
+Start a new Claude Code session and type `/vendor-review`. A marketplace or `--plugin-dir` install lists the skill as `/vendor-review:vendor-review`, because plugin skills carry the plugin name as a prefix; a copied or symlinked skill lists as `/vendor-review`. From your shell, `claude plugin details vendor-review` should show `Skills (1)  vendor-review`.
 
 ## Usage
 
@@ -185,7 +206,7 @@ vendor-review-plugin/
 - **`references/scoring.md`** — The weighted scoring rubric. Edit this to change dimension weights, add dimensions, or modify the 1–5 scoring criteria.
 - **`references/report-template.md`** — The markdown template for generated reports. Edit this to change report structure, add sections, or modify formatting.
 - **`references/approved-services-template.md`** — Template for client approved-services trackers. Created automatically for new clients.
-- **`.claude/settings.json`** — Pre-approves WebFetch and WebSearch across all domains so research agents don't trigger per-domain permission prompts.
+- **`.claude/settings.json`** — Pre-approves WebFetch and WebSearch across all domains so research agents don't trigger per-domain permission prompts. It applies only to sessions started inside this repository; a marketplace install does not carry it, so add `WebFetch` and `WebSearch` to `permissions.allow` in your own settings if research agents prompt for each domain.
 
 ## Customization
 
@@ -229,6 +250,12 @@ Each agent's research instructions are in `SKILL.md` under the "Research Phase" 
    git push origin feature/add-supply-chain-dimension
    gh pr create --title "Add supply chain risk dimension" --body "..."
    ```
+
+### Releasing
+
+Bump `version` in `.claude-plugin/plugin.json` with every change you want users to receive. Marketplace installs stay on their cached copy until the version string changes, so a merged change without a version bump never reaches them.
+
+The marketplace catalog lives in the [Konda-Security/www](https://github.com/Konda-Security/www) repo at `static/claude/marketplace.json` and tracks this repo's `main` branch. A release is a merge to `main` with a bumped version; the catalog only needs editing when the plugin's name, description, or source changes.
 
 ### What Makes a Good Contribution
 
