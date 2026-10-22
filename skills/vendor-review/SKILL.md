@@ -1,7 +1,13 @@
 ---
 name: vendor-review
 description: Conduct a comprehensive vendor security and risk assessment. Use when the user invokes "/vendor-review", or asks to "review a vendor", "assess vendor risk", "vendor due diligence", "vendor security assessment", "third-party risk assessment", or "evaluate a vendor". Requires a URL or company name as input.
-allowed-tools: WebFetch, WebSearch, Agent, Write, Read, Bash
+allowed-tools:
+  - WebFetch
+  - WebSearch
+  - Agent
+  - Read(/${CLAUDE_SKILL_DIR}/**)
+  - Edit(./reports/**)
+  - Bash(${CLAUDE_SKILL_DIR}/scripts/make-pdf.sh *)
 argument-hint: <vendor-url-or-name>
 ---
 
@@ -27,13 +33,13 @@ Before starting research, ask the user:
 If the user has done reviews in this session before, offer the same client and path as a default. If the user says "same client" or "same as before," reuse the previous values.
 
 Once the client directory is confirmed:
-- Check if an `approved-services.md` file exists in the parent directory of the reports path (e.g., one level up from `reviews/`). If it does not exist, offer to create one from the template at `references/approved-services-template.md`, substituting the client name.
+- Check if an `approved-services.md` file exists in the parent directory of the reports path (e.g., one level up from `reviews/`). If it does not exist, offer to create one from the template at `${CLAUDE_SKILL_DIR}/references/approved-services-template.md`, substituting the client name.
 - Store the client name and delivery path for use in the Post-Report phase.
 
 ## Preparation
 
-1. Read the scoring methodology from `references/scoring.md` (relative to this skill's directory).
-2. Read the report template from `references/report-template.md` (relative to this skill's directory).
+1. Read the scoring methodology from `${CLAUDE_SKILL_DIR}/references/scoring.md`.
+2. Read the report template from `${CLAUDE_SKILL_DIR}/references/report-template.md`.
 3. Extract the vendor's domain name for use in research queries.
 
 ## Research Phase — Parallel Agent Deployment
@@ -198,7 +204,7 @@ Generate the report using the template from `references/report-template.md`. Wri
 
 Where `<vendor-slug>` is the vendor name in lowercase kebab-case and `<YYYY-MM-DD>` is today's date.
 
-Ensure the `reports/` directory exists (create it if not).
+Write it with the Write tool, which creates the `reports/` directory if it does not exist.
 
 ### Report Requirements
 
@@ -215,11 +221,11 @@ Ensure the `reports/` directory exists (create it if not).
 After writing the report to `./reports/`:
 
 ### 1. Generate PDF
-If `pandoc` is available, generate a PDF automatically:
+Run the bundled script exactly as written, unquoted, with the report path relative to the working directory:
 ```
-pandoc <report-path> -o <report-path>.pdf --pdf-engine=xelatex -V geometry:margin=1in -V fontsize=11pt -V colorlinks=true
+${CLAUDE_SKILL_DIR}/scripts/make-pdf.sh reports/<vendor-slug>-<YYYY-MM-DD>.md
 ```
-If `xelatex` is not available, try `--pdf-engine=pdflatex` or `wkhtmltopdf`. If no PDF engine is available, inform the user and suggest they install pandoc.
+The script writes `reports/<vendor-slug>-<YYYY-MM-DD>.pdf` with fixed pandoc options, trying xelatex, then pdflatex, then wkhtmltopdf. Do not call pandoc directly. If the script reports that pandoc or a PDF engine is missing, tell the user and suggest they install pandoc and a LaTeX engine such as MacTeX.
 
 ### 2. Deliver to Client Directory
 Copy both the markdown and PDF to the client delivery directory confirmed in the Client Context step. Verify the files arrived with `ls -la`.
