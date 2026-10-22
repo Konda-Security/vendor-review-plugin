@@ -1,6 +1,6 @@
-# Vendor Review Plugin for Claude Code
+# Konda Security Third Party Risk Management for Claude Code
 
-A Claude Code plugin that conducts comprehensive third-party vendor security and risk assessments. It spawns parallel research agents to investigate a vendor across ten risk dimensions, scores each on a 1–5 scale using a weighted rubric, and generates a timestamped markdown report suitable for PDF export.
+`tprm` is a Claude Code plugin for third party risk management. Its `vendor-review` skill conducts comprehensive vendor security and risk assessments. It spawns parallel research agents to investigate a vendor across ten risk dimensions, scores each on a 1–5 scale using a weighted rubric, and generates a timestamped markdown report suitable for PDF export.
 
 ## What It Does
 
@@ -48,7 +48,7 @@ This plugin is built for **Claude Code** — Anthropic's CLI agent for software 
 
 ### How It Works in Claude Code
 
-1. The plugin registers as a **skill** — a slash command that Claude Code discovers automatically from `.claude/skills/vendor-review/SKILL.md`
+1. The plugin registers as a **skill** — a slash command that Claude Code discovers from `skills/vendor-review/SKILL.md` when the plugin is installed from the marketplace or loaded with `claude --plugin-dir /path/to/vendor-review-plugin`
 2. When you invoke `/vendor-review <url>`, Claude Code reads the SKILL.md instructions and follows them
 3. The skill spawns **9 parallel research agents** — each is a separate Claude Code subagent that runs WebFetch and WebSearch independently
 4. After all agents report back, the main session synthesizes findings, scores dimensions, and generates the report
@@ -56,44 +56,78 @@ This plugin is built for **Claude Code** — Anthropic's CLI agent for software 
 
 A typical assessment takes 2–5 minutes depending on the vendor's size and the amount of publicly available information.
 
+### Permissions
+
+The skill pre-approves a narrow set of tools in its `allowed-tools` frontmatter:
+
+| Pre-approved | Why |
+|---|---|
+| `WebFetch`, `WebSearch`, `Agent` | Research and parallel research agents |
+| `Read` of the skill's own directory | Scoring rubric and report templates, which sit outside your working directory when the plugin is installed |
+| `Edit` under `./reports/` | Writing the report |
+| `scripts/make-pdf.sh` | PDF generation with fixed pandoc options, instead of pandoc itself, whose `--filter` flags can run arbitrary programs |
+
+Everything else, such as copying reports to a client directory or updating `approved-services.md`, goes through your normal permission prompts. Claude Code clears a skill's pre-approvals when you send your next message, so after you answer the client questions, the research phase also follows your own permission settings. To avoid a prompt for every vendor domain, add `WebFetch` and `WebSearch` to `permissions.allow` in your settings.
+
 ## Installation
 
-### Local Use (Single Machine)
+### From the Konda Security Marketplace (Recommended)
 
-Clone the repo into your Claude Code skills directory:
+In a Claude Code session, add the marketplace and install the plugin:
 
-```bash
-mkdir -p ~/.claude/skills
-git clone git@github.com:Konda-Security/vendor-review-plugin.git ~/.claude/skills/vendor-review
+```
+/plugin marketplace add https://kondasecurity.com/claude/marketplace.json
+/plugin install tprm@konda-security
 ```
 
-Alternatively, symlink from wherever you cloned it:
+Or do both in one step (Claude Code 2.1.275 or later):
 
-```bash
-git clone git@github.com:Konda-Security/vendor-review-plugin.git ~/path/to/vendor-review-plugin
-ln -s ~/path/to/vendor-review-plugin/.claude/skills/vendor-review ~/.claude/skills/vendor-review
+```
+/plugin install tprm --marketplace https://kondasecurity.com/claude/marketplace.json
 ```
 
-### Project-Level Use
+The same commands work from your shell as `claude plugin marketplace add ...` and `claude plugin install ...`. Start a new session (or run `/reload-plugins`) after installing.
 
-To make the plugin available only within a specific project, clone or copy the `.claude/skills/vendor-review` directory into that project's `.claude/skills/` folder:
+### Sharing With a Project Team
+
+To register the plugin for everyone who works in a repository, run these once from the repository root and commit the `.claude/settings.json` they write:
+
+```bash
+claude plugin marketplace add https://kondasecurity.com/claude/marketplace.json --scope project
+claude plugin install tprm@konda-security --scope project
+```
+
+Or copy the skill directly into that project's `.claude/skills/` folder:
 
 ```bash
 cd your-project
 mkdir -p .claude/skills
-cp -r /path/to/vendor-review-plugin/.claude/skills/vendor-review .claude/skills/vendor-review
+cp -r /path/to/vendor-review-plugin/skills/vendor-review .claude/skills/vendor-review
 ```
 
-Or add this repo as a git submodule:
+### From a Local Clone
+
+Clone the repo and load it as a plugin when you start Claude Code:
 
 ```bash
-cd your-project
-git submodule add git@github.com:Konda-Security/vendor-review-plugin.git .claude/plugins/vendor-review
+git clone git@github.com:Konda-Security/vendor-review-plugin.git ~/path/to/vendor-review-plugin
+claude --plugin-dir ~/path/to/vendor-review-plugin
 ```
+
+To make the skill available in every session without the flag, symlink it into your personal skills directory:
+
+```bash
+mkdir -p ~/.claude/skills
+ln -s ~/path/to/vendor-review-plugin/skills/vendor-review ~/.claude/skills/vendor-review
+```
+
+### Updating
+
+Marketplace installs are cached and only change when the plugin's version changes. To pick up a new release, run `/plugin marketplace update konda-security` in a session, or `claude plugin update tprm@konda-security` from your shell. To receive releases automatically, open `/plugin`, go to **Marketplaces**, select `konda-security`, and choose **Enable auto-update**.
 
 ### Verify Installation
 
-Start a new Claude Code session and type `/vendor-review` — it should appear in the skill list. You can also check with `/help` to see available commands.
+Start a new Claude Code session and type `/vendor-review`. A marketplace or `--plugin-dir` install lists the skill as `/tprm:vendor-review`, because plugin skills carry the plugin name as a prefix; a copied or symlinked skill lists as `/vendor-review`. From your shell, `claude plugin details tprm` should show `Skills (1)  vendor-review`.
 
 ## Usage
 
@@ -142,39 +176,39 @@ If a client doesn't have an `approved-services.md` yet, the plugin offers to cre
 
 ### Manual PDF Conversion
 
-If pandoc is not installed or automatic PDF generation fails, you can convert manually:
+If automatic PDF generation fails, install pandoc and a PDF engine, then run the bundled script from the directory that contains `reports/`:
 
 ```bash
-pandoc reports/vendor-name-2026-08-21.md \
-  -o reports/vendor-name-2026-08-21.pdf \
-  --pdf-engine=xelatex \
-  -V geometry:margin=1in \
-  -V fontsize=11pt
-
-# Or open the markdown in any viewer that supports PDF export
-# (VS Code + Markdown PDF extension, Marked 2, etc.)
+/path/to/vendor-review-plugin/skills/vendor-review/scripts/make-pdf.sh reports/vendor-name-2026-08-21.md
 ```
+
+The script writes `reports/vendor-name-2026-08-21.pdf`, trying xelatex, then pdflatex, then wkhtmltopdf. It disables raw TeX and HTML in the markdown, so text in a report can't pull local files into the PDF. You can also open the markdown in any viewer that supports PDF export (VS Code with the Markdown PDF extension, Marked 2, etc.).
 
 ## Project Structure
 
 ```
 vendor-review-plugin/
 ├── README.md                          # This file
+├── LICENSE                            # MIT License
 ├── CLAUDE.md                          # Claude Code project context
 ├── .gitignore
 ├── .claude-plugin/
 │   └── plugin.json                    # Marketplace manifest
+├── skills/
+│   └── vendor-review/
+│       ├── SKILL.md                   # Main skill — orchestration logic
+│       ├── scripts/
+│       │   └── make-pdf.sh            # Markdown-to-PDF with fixed pandoc options
+│       └── references/
+│           ├── scoring.md             # Scoring methodology and rubric
+│           ├── report-template.md     # Markdown report template
+│           └── approved-services-template.md  # Client tracker template
 ├── reports/                           # Generated reports (gitignored)
 │   └── .gitkeep
 └── .claude/
     ├── settings.json                  # Auto-allows WebFetch/WebSearch
     └── skills/
-        └── vendor-review/
-            ├── SKILL.md               # Main skill — orchestration logic
-            └── references/
-                ├── scoring.md         # Scoring methodology and rubric
-                ├── report-template.md # Markdown report template
-                └── approved-services-template.md  # Client tracker template
+        └── vendor-review -> ../../skills/vendor-review  # Symlink for in-repo use
 ```
 
 ### Key Files
@@ -183,7 +217,8 @@ vendor-review-plugin/
 - **`references/scoring.md`** — The weighted scoring rubric. Edit this to change dimension weights, add dimensions, or modify the 1–5 scoring criteria.
 - **`references/report-template.md`** — The markdown template for generated reports. Edit this to change report structure, add sections, or modify formatting.
 - **`references/approved-services-template.md`** — Template for client approved-services trackers. Created automatically for new clients.
-- **`.claude/settings.json`** — Pre-approves WebFetch and WebSearch across all domains so research agents don't trigger per-domain permission prompts.
+- **`scripts/make-pdf.sh`** — Converts a report under `./reports/` to PDF. The skill pre-approves this script rather than pandoc, so keep any new pandoc options inside it.
+- **`.claude/settings.json`** — Pre-approves WebFetch and WebSearch across all domains so research agents don't trigger per-domain permission prompts. It applies only to sessions started inside this repository; a marketplace install does not carry it, so add `WebFetch` and `WebSearch` to `permissions.allow` in your own settings if research agents prompt for each domain.
 
 ## Customization
 
@@ -228,6 +263,12 @@ Each agent's research instructions are in `SKILL.md` under the "Research Phase" 
    gh pr create --title "Add supply chain risk dimension" --body "..."
    ```
 
+### Releasing
+
+Bump `version` in `.claude-plugin/plugin.json` with every change you want users to receive. Marketplace installs stay on their cached copy until the version string changes, so a merged change without a version bump never reaches them.
+
+The marketplace catalog lives in the [Konda-Security/www](https://github.com/Konda-Security/www) repo at `static/claude/marketplace.json` and tracks this repo's `main` branch. A release is a merge to `main` with a bumped version; the catalog only needs editing when the plugin's name, description, or source changes.
+
 ### What Makes a Good Contribution
 
 - **New dimensions** — with rubric, template section, and research agent
@@ -256,4 +297,4 @@ There are no automated tests — the plugin is a set of prompt instructions. To 
 
 ## License
 
-Copyright Konda Security. All rights reserved.
+Released under the [MIT License](LICENSE).
