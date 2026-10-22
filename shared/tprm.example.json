@@ -1,0 +1,28 @@
+{
+  "client": "Example Co",
+  "tracker": "approved-services.md",
+  "reviewsDir": "reviews",
+  "evidenceDir": "evidence",
+  "reviewCadenceMonths": 12,
+  "entities": [],
+  "flags": {},
+  "categories": [
+    "Critical Vendors",
+    "HR / Operations",
+    "Security / Compliance",
+    "IT and Endpoint Management",
+    "Development Tools",
+    "AI Tools"
+  ],
+  "pdf": {
+    "command": "builtin"
+  },
+  "github": {
+    "repo": "",
+    "label": "vendor-review"
+  },
+  "docs": {
+    "policy": "",
+    "process": ""
+  }
+}

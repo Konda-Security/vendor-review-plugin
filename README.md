@@ -1,22 +1,157 @@
 # Konda Security Third Party Risk Management for Claude Code
 
-`tprm` is a Claude Code plugin for third party risk management. Its `vendor-review` skill conducts comprehensive vendor security and risk assessments. It spawns parallel research agents to investigate a vendor across ten risk dimensions, scores each on a 1–5 scale using a weighted rubric, and generates a timestamped markdown report suitable for PDF export.
+`tprm` is a Claude Code plugin for running a third party risk management program. It triages vendor requests, performs full vendor security and risk assessments, reviews vendor SOC 2 reports and other evidence, re-reviews vendors on a schedule, maintains the approved-services list, syncs requests and decisions with GitHub issues, and drafts the vendor management policy and process documents.
 
-## What It Does
+Everything works on a **workspace**: one folder per client that holds the approved-services list, the review records, and vendor-provided evidence, configured by a `tprm.json` file.
 
-When you run `/vendor-review`, the plugin:
+## Quick Start
 
-1. **Researches the vendor** by deploying 9 parallel agents that WebFetch the vendor's website and WebSearch across public sources — trust centers, privacy policies, compliance databases, breach records, financial filings, sanctions lists, AI governance disclosures, and reputational data.
-2. **Scores 10 risk dimensions** using a structured rubric with cited evidence for every score.
-3. **Generates a professional report** with an executive summary, detailed scorecard, findings, risk factors, and recommended mitigations.
+```
+/plugin install tprm --marketplace https://kondasecurity.com/claude/marketplace.json
+```
 
-### Assessment Dimensions
+Then, from the client's repository or folder:
+
+```
+/tprm:tprm-setup                          # once per client: create or adopt the workspace
+/tprm:vendor-quick-check Acme Notes 42    # triage a request (issue #42)
+/tprm:vendor-review https://acme.example  # full assessment when triage says so
+/tprm:vendor-tracker record reviews/acme-2026-10-22.md
+/tprm:vendor-github-sync push             # commit the record, post the decision to the issue
+```
+
+Plugin skills are listed as `/tprm:<skill>`. You can also type the short form, such as `/vendor-review`, unless another installed command uses the same name.
+
+## Skills
+
+| Skill | What it does | Cost |
+|-------|--------------|------|
+| `tprm-setup` | Creates `tprm.json`, the folders, and the tracker, or adopts an existing vendor review folder | Low |
+| `vendor-quick-check` | Triages a request from the intake answers and a few web checks; fast-tracks low-risk tools or routes to a full review | Low, no subagents |
+| `vendor-review` | Full assessment: 9 parallel research agents, 10 weighted dimensions, cited evidence, PDF | High |
+| `vendor-evidence-review` | Reviews vendor-provided SOC 2 reports, bridge letters, ISO certificates, and pen test letters: scope, opinion, exceptions, carve-outs, CUECs | Medium, no web access |
+| `vendor-rereview` | Re-reviews a previously reviewed vendor by looking only for changes since the prior record; escalates to a full review when warranted | Medium, no subagents |
+| `vendor-tracker` | Maintains the approved-services list: add, record decisions, list what's due, check, migrate, retire | Low |
+| `vendor-github-sync` | Installs the issue form and labels, pulls open requests into the tracker, and pushes records and decisions back to GitHub | Low |
+| `tprm-docs` | Drafts the vendor management policy, review process, and request form, or checks existing ones against how the workspace operates | Low |
+
+`tprm-setup`, `tprm-docs`, and `vendor-github-sync` run only when you invoke them. The others can also be picked up automatically when you ask for that kind of work.
+
+## Workflow
+
+```mermaid
+flowchart LR
+    A[Request<br/>GitHub issue or form] --> B[vendor-github-sync pull<br/>or vendor-tracker add]
+    B --> C[vendor-quick-check]
+    C -->|fast-track| F[vendor-tracker record]
+    C -->|full review| D[vendor-review]
+    E[vendor-evidence-review] --> D
+    D --> F
+    F --> G[vendor-github-sync push]
+    G --> H[vendor-tracker due]
+    H --> I[vendor-rereview]
+    I --> F
+```
+
+### 1. Set up a client workspace
+
+Run `/tprm:tprm-setup` from the client's repository or folder. It looks for an existing tracker and review records, proposes adopting them, and asks for:
+
+- the client name and workspace folder
+- **entities** that need separate audit scope, such as `Parent, Subsidiary, Shared` (usually none)
+- **flags**, extra Yes/No tracker columns such as `PHI` or `Cardholder Data` (usually none)
+- how to make PDFs: the built-in pandoc script, none, or the client's own renderer
+- the review cadence (12 months by default)
+
+It writes `tprm.json`, creates the folders and tracker, and offers to add the evidence folder to `.gitignore`. For an existing tracker, run `/tprm:vendor-tracker migrate` next to bring it to the standard format; it never guesses entity or flag values, and asks for them instead.
+
+### 2. Take requests
+
+With GitHub, run `/tprm:vendor-github-sync setup` once to install the vendor review issue form and labels. Then `/tprm:vendor-github-sync pull` adds open requests to the tracker as Pending Review. Without GitHub, `/tprm:tprm-docs form` drafts a request form, and `/tprm:vendor-tracker add <vendor>` adds a request by hand.
+
+### 3. Triage, then review
+
+`/tprm:vendor-quick-check <vendor> [issue]` fast-tracks a vendor only when it receives no client or company data, has no system access beyond sign-in, isn't business-critical, doesn't run AI on your data, and shows no red flags. Everything else gets a full review:
+
+```
+/tprm:vendor-review <vendor-url-or-name> [issue]
+```
+
+If the vendor sent a SOC 2 report or other documents, put them in `<workspace>/<evidenceDir>/<vendor-slug>/` and run `/tprm:vendor-evidence-review <vendor>` first; the full review then uses its findings.
+
+### 4. Record the decision
+
+The review records a **recommendation**; the client makes the **decision**. `/tprm:vendor-tracker record <record path>` proposes the tracker row, asks you to confirm the decision, and sets Next Review from the record or the cadence. Then `/tprm:vendor-github-sync push`:
+
+1. opens retroactive issues for tracker rows that have none (you choose which),
+2. commits and pushes the records and tracker, staging files by explicit path and never touching evidence or PDFs,
+3. comments on open issues, and on closed issues whose labels change, with the decision and a permanent link to the record. It sets the decision labels, and closes the issue unless a follow-up date is pending.
+
+Each of those steps is shown first and runs only after you confirm it.
+
+### 5. Monitor
+
+`/tprm:vendor-tracker due` lists overdue and upcoming reviews. `/tprm:vendor-rereview <vendor>` re-checks SOC 2 currency, incidents, terms and AI changes, ownership, and leadership since the prior record, and asks whether the prior conditions were met. `/tprm:vendor-github-sync status` reports drift between GitHub and the tracker, such as an issue labelled approved for a vendor the tracker lists as Conditional.
+
+### 6. Document the program
+
+`/tprm:tprm-docs` drafts the vendor management policy and the vendor review process from templates and the workspace configuration. For documents that already exist, it lists gaps and contradictions instead, such as a policy that requires entity tags the tracker doesn't have, and proposes exact edits. Drafts are marked DRAFT until the client approves them.
+
+## The Workspace
+
+```
+vendor-review/                  # the workspace folder (name is up to you)
+├── tprm.json                   # workspace configuration
+├── approved-services.md        # the tracker: source of truth for decisions
+├── reviews/                    # all records, with PDFs next to them
+│   ├── acme-2026-10-22.md                  # full review or re-review
+│   ├── acme-2026-10-22.pdf
+│   ├── notes-app-2026-10-20-quick-check.md # quick check
+│   └── acme-2026-10-21-evidence.md         # evidence review
+└── evidence/                   # vendor-provided documents, kept out of git
+    └── acme/soc2-report.pdf
+```
+
+### tprm.json
+
+```json
+{
+  "client": "Example Co",
+  "tracker": "approved-services.md",
+  "reviewsDir": "reviews",
+  "evidenceDir": "evidence",
+  "reviewCadenceMonths": 12,
+  "entities": [],
+  "flags": {},
+  "categories": ["Critical Vendors", "HR / Operations", "Security / Compliance", "IT and Endpoint Management", "Development Tools", "AI Tools"],
+  "pdf": { "command": "builtin" },
+  "github": { "repo": "", "label": "vendor-review" },
+  "docs": { "policy": "", "process": "" }
+}
+```
+
+Paths are relative to the folder that holds `tprm.json`. Notable options:
+
+- **`entities`:** adds an Entity column, and every row needs a value from the list.
+- **`flags`:** adds Yes/No columns, for example `{"PHI": "Processes protected health information"}`.
+- **`pdf.command`:** `builtin`, `none`, or the client's own renderer, such as `"python3 ../tools/render_pdf.py {input} -o {output}"`. It runs from the workspace folder.
+- **`github.repo`:** defaults to the repository of the checkout that contains the workspace.
+
+The full specification, including record names, the metadata block, and the tracker columns, is in [`shared/workspace.md`](shared/workspace.md).
+
+### The tracker
+
+One table per category, with these columns: Vendor (linked to its latest record), Service, Entity (if configured), Data Handled, one column per flag, SOC 2 Report, Last Review, Next Review, Status, and Request. Status starts with **Pending Review**, **Approved**, **Conditional**, **Denied**, or **Retired**, followed by the score and the conditions or reason.
+
+## Assessment Method
+
+The full review scores ten dimensions from 1 to 5 and computes a weighted overall score:
 
 | Dimension            | Weight | What It Covers                                                  |
 |----------------------|--------|-----------------------------------------------------------------|
 | Security Posture     | 15%    | Published security practices, certifications, vuln management   |
-| Privacy Practices    | 12%    | Privacy policy, DPA, GDPR/CCPA compliance                      |
-| Compliance           | 12%    | SOC 2/3, ISO 27001, HIPAA, PCI DSS, FedRAMP                    |
+| Privacy Practices    | 12%    | Privacy policy, DPA, GDPR/CCPA compliance                       |
+| Compliance           | 12%    | SOC 2/3, ISO 27001, HIPAA, PCI DSS, FedRAMP                     |
 | Breach History       | 12%    | Public breaches, incident response track record                 |
 | AI Risk              | 10%    | AI governance, model transparency, bias, EU AI Act / NIST       |
 | Export Control Risk  | 8%     | ITAR, EAR, OFAC sanctions, BIS Entity List, jurisdictions       |
@@ -25,275 +160,89 @@ When you run `/vendor-review`, the plugin:
 | Leadership Stability | 5%     | Executive tenure, governance, key-person risk                   |
 | Transparency         | 10%    | Trust center, status page, audit availability                   |
 
-### Risk Ratings
+| Score     | Rating        | Recommendation          |
+|-----------|---------------|-------------------------|
+| 4.5 – 5.0 | Minimal Risk  | Approve                 |
+| 3.5 – 4.4 | Low Risk      | Approve                 |
+| 2.5 – 3.4 | Moderate Risk | Approve with Conditions |
+| 1.5 – 2.4 | High Risk     | Discourage              |
+| 1.0 – 1.4 | Critical Risk | Do Not Approve          |
 
-| Score       | Rating         | Recommendation             |
-|-------------|----------------|----------------------------|
-| 4.5 – 5.0  | Minimal Risk   | Approve                    |
-| 3.5 – 4.4  | Low Risk       | Approve with standard terms|
-| 2.5 – 3.4  | Moderate Risk  | Conditional approval       |
-| 1.5 – 2.4  | High Risk      | Discourage                 |
-| 1.0 – 1.4  | Critical Risk  | Do Not Approve             |
+Vendors with materially different tiers, such as consumer and enterprise plans, are scored per tier. Vendor families, such as a managed service provider and the tools it runs, are reviewed as related records with consolidated requirements.
 
 ## Requirements
 
-This plugin is built for **Claude Code** — Anthropic's CLI agent for software engineering. It is not compatible with regular Claude (claude.ai web/app), Claude for Slack, or Claude mobile. The plugin relies on Claude Code's agent spawning, WebFetch, WebSearch, and file system access — none of which exist in other Claude interfaces.
+- **Claude Code.** The plugin uses subagents, WebFetch, WebSearch, and file access, which other Claude interfaces don't offer.
+- **`gh`, signed in** (`gh auth login`), for issue intake and `vendor-github-sync`.
+- **pandoc and a LaTeX engine** (optional), for the built-in PDF renderer: `brew install pandoc` and `brew install --cask mactex`. Not needed when `pdf.command` is `none` or the client's own renderer.
 
-### What You Need
+## Permissions
 
-- **Claude Code** installed and authenticated ([installation guide](https://docs.anthropic.com/en/docs/claude-code))
-- **Claude Code plan** with access to Agent, WebFetch, and WebSearch tools (Pro, Team, or Enterprise)
-- **pandoc** (optional, for automatic PDF generation) — install via `brew install pandoc` (macOS) or your package manager
-- **xelatex** (optional, for higher-quality PDF output) — install via `brew install --cask mactex` or `tlmgr install xelatex`
+Each skill pre-approves only what it needs, in its `allowed-tools` frontmatter:
 
-### How It Works in Claude Code
+| Pre-approved | Skills | Why |
+|--------------|--------|-----|
+| `WebFetch`, `WebSearch` | quick check, review, re-review | Research |
+| `Agent` | vendor-review only | Parallel research agents |
+| `Read` of the plugin's own files | all | The workspace spec and templates sit outside your working directory once installed |
+| `scripts/make-pdf.sh` | review, re-review, quick check, evidence review | PDFs with fixed pandoc options; pandoc itself isn't pre-approved because its `--filter` flags can run arbitrary programs |
+| Read-only `gh` commands | review, quick check, sync, setup | Reading issues, labels, and the repository name |
 
-1. The plugin registers as a **skill** — a slash command that Claude Code discovers from `skills/vendor-review/SKILL.md` when the plugin is installed from the marketplace or loaded with `claude --plugin-dir /path/to/vendor-review-plugin`
-2. When you invoke `/vendor-review <url>`, Claude Code reads the SKILL.md instructions and follows them
-3. The skill spawns **9 parallel research agents** — each is a separate Claude Code subagent that runs WebFetch and WebSearch independently
-4. After all agents report back, the main session synthesizes findings, scores dimensions, and generates the report
-5. The report is written locally, converted to PDF, and optionally delivered to a client directory
+Apart from the PDF renderer, which only writes a PDF next to a record, nothing that writes is pre-approved: editing files, `git commit` and `git push`, and creating or editing issues and labels all go through your normal permission prompts, after the skill has shown its plan. `vendor-evidence-review` has no web access at all, because it handles documents that are often under NDA.
 
-A typical assessment takes 2–5 minutes depending on the vendor's size and the amount of publicly available information.
+Claude Code clears a skill's pre-approvals when you send your next message, so after you answer a skill's questions, research follows your own permission settings. To avoid a prompt for every vendor domain, add `WebFetch` and `WebSearch` to `permissions.allow` in your settings.
 
-### Permissions
+## Updating
 
-The skill pre-approves a narrow set of tools in its `allowed-tools` frontmatter:
+Marketplace installs are cached and only change when the plugin's version changes. Run `/plugin marketplace update konda-security` in a session or `claude plugin update tprm@konda-security` from your shell, or turn on auto-update under `/plugin` → **Marketplaces** → `konda-security`.
 
-| Pre-approved | Why |
-|---|---|
-| `WebFetch`, `WebSearch`, `Agent` | Research and parallel research agents |
-| `Read` of the skill's own directory | Scoring rubric and report templates, which sit outside your working directory when the plugin is installed |
-| `Edit` under `./reports/` | Writing the report |
-| `scripts/make-pdf.sh` | PDF generation with fixed pandoc options, instead of pandoc itself, whose `--filter` flags can run arbitrary programs |
+## Other Ways to Install
 
-Everything else, such as copying reports to a client directory or updating `approved-services.md`, goes through your normal permission prompts. Claude Code clears a skill's pre-approvals when you send your next message, so after you answer the client questions, the research phase also follows your own permission settings. To avoid a prompt for every vendor domain, add `WebFetch` and `WebSearch` to `permissions.allow` in your settings.
+- **Team install for one repository:** run `claude plugin marketplace add https://kondasecurity.com/claude/marketplace.json --scope project` and `claude plugin install tprm@konda-security --scope project` from the repository root, then commit the `.claude/settings.json` they write.
+- **From a local clone:** `git clone git@github.com:Konda-Security/vendor-review-plugin.git`, then `claude --plugin-dir /path/to/vendor-review-plugin`.
 
-## Installation
-
-### From the Konda Security Marketplace (Recommended)
-
-In a Claude Code session, add the marketplace and install the plugin:
-
-```
-/plugin marketplace add https://kondasecurity.com/claude/marketplace.json
-/plugin install tprm@konda-security
-```
-
-Or do both in one step (Claude Code 2.1.275 or later):
-
-```
-/plugin install tprm --marketplace https://kondasecurity.com/claude/marketplace.json
-```
-
-The same commands work from your shell as `claude plugin marketplace add ...` and `claude plugin install ...`. Start a new session (or run `/reload-plugins`) after installing.
-
-### Sharing With a Project Team
-
-To register the plugin for everyone who works in a repository, run these once from the repository root and commit the `.claude/settings.json` they write:
-
-```bash
-claude plugin marketplace add https://kondasecurity.com/claude/marketplace.json --scope project
-claude plugin install tprm@konda-security --scope project
-```
-
-Or copy the skill directly into that project's `.claude/skills/` folder:
-
-```bash
-cd your-project
-mkdir -p .claude/skills
-cp -r /path/to/vendor-review-plugin/skills/vendor-review .claude/skills/vendor-review
-```
-
-### From a Local Clone
-
-Clone the repo and load it as a plugin when you start Claude Code:
-
-```bash
-git clone git@github.com:Konda-Security/vendor-review-plugin.git ~/path/to/vendor-review-plugin
-claude --plugin-dir ~/path/to/vendor-review-plugin
-```
-
-To make the skill available in every session without the flag, symlink it into your personal skills directory:
-
-```bash
-mkdir -p ~/.claude/skills
-ln -s ~/path/to/vendor-review-plugin/skills/vendor-review ~/.claude/skills/vendor-review
-```
-
-### Updating
-
-Marketplace installs are cached and only change when the plugin's version changes. To pick up a new release, run `/plugin marketplace update konda-security` in a session, or `claude plugin update tprm@konda-security` from your shell. To receive releases automatically, open `/plugin`, go to **Marketplaces**, select `konda-security`, and choose **Enable auto-update**.
-
-### Verify Installation
-
-Start a new Claude Code session and type `/vendor-review`. A marketplace or `--plugin-dir` install lists the skill as `/tprm:vendor-review`, because plugin skills carry the plugin name as a prefix; a copied or symlinked skill lists as `/vendor-review`. From your shell, `claude plugin details tprm` should show `Skills (1)  vendor-review`.
-
-## Usage
-
-```
-/vendor-review <vendor-url-or-company-name>
-```
-
-### Examples
-
-```
-/vendor-review https://www.datadog.com
-/vendor-review Snowflake
-/vendor-review https://www.crowdstrike.com
-```
-
-The plugin will:
-1. **Ask which client** this review is for and where to deliver the report
-2. Run 9 research agents in parallel (takes 2–5 minutes depending on the vendor)
-3. Generate both markdown and PDF reports
-4. Copy reports to the client's delivery directory
-5. Update the client's `approved-services.md` tracker (if one exists)
-6. Display the executive summary and scorecard in the conversation
-
-For subsequent reviews in the same session, you can say "same client" to skip the client context step.
-
-### Multi-Client Workflow
-
-The plugin is designed for consultants and security teams managing vendor reviews across multiple clients or projects. Each client gets their own delivery directory and approved-services tracker:
-
-```
-~/clients/
-├── acme-corp/
-│   └── security/vendor-review/
-│       ├── approved-services.md      # Auto-maintained by the plugin
-│       └── reviews/
-│           ├── datadog-2026-08-21.md
-│           └── datadog-2026-08-21.pdf
-└── other-client/
-    └── security/vendor-review/
-        ├── approved-services.md
-        └── reviews/
-            └── ...
-```
-
-If a client doesn't have an `approved-services.md` yet, the plugin offers to create one from a built-in template.
-
-### Manual PDF Conversion
-
-If automatic PDF generation fails, install pandoc and a PDF engine, then run the bundled script from the directory that contains `reports/`:
-
-```bash
-/path/to/vendor-review-plugin/skills/vendor-review/scripts/make-pdf.sh reports/vendor-name-2026-08-21.md
-```
-
-The script writes `reports/vendor-name-2026-08-21.pdf`, trying xelatex, then pdflatex, then wkhtmltopdf. It disables raw TeX and HTML in the markdown, so text in a report can't pull local files into the PDF. You can also open the markdown in any viewer that supports PDF export (VS Code with the Markdown PDF extension, Marked 2, etc.).
+To check an install, run `claude plugin details tprm`; it should list eight skills.
 
 ## Project Structure
 
 ```
 vendor-review-plugin/
-├── README.md                          # This file
-├── LICENSE                            # MIT License
-├── CLAUDE.md                          # Claude Code project context
-├── .gitignore
-├── .claude-plugin/
-│   └── plugin.json                    # Marketplace manifest
+├── .claude-plugin/plugin.json        # plugin manifest (name: tprm)
+├── shared/
+│   ├── workspace.md                  # workspace spec read by every skill
+│   └── tprm.example.json             # default tprm.json
+├── scripts/make-pdf.sh               # built-in PDF renderer
 ├── skills/
-│   └── vendor-review/
-│       ├── SKILL.md                   # Main skill — orchestration logic
-│       ├── scripts/
-│       │   └── make-pdf.sh            # Markdown-to-PDF with fixed pandoc options
-│       └── references/
-│           ├── scoring.md             # Scoring methodology and rubric
-│           ├── report-template.md     # Markdown report template
-│           └── approved-services-template.md  # Client tracker template
-├── reports/                           # Generated reports (gitignored)
-│   └── .gitkeep
-└── .claude/
-    ├── settings.json                  # Auto-allows WebFetch/WebSearch
-    └── skills/
-        └── vendor-review -> ../../skills/vendor-review  # Symlink for in-repo use
+│   ├── tprm-setup/                   # + workspace README template
+│   ├── vendor-quick-check/           # + quick check template
+│   ├── vendor-review/                # + scoring rubric, report template
+│   ├── vendor-evidence-review/       # + evidence review template
+│   ├── vendor-rereview/              # + re-review template
+│   ├── vendor-tracker/               # + tracker template
+│   ├── vendor-github-sync/           # + issue form template
+│   └── tprm-docs/                    # + policy, process, and form templates
+├── CLAUDE.md                         # development notes
+├── LICENSE
+└── README.md
 ```
-
-### Key Files
-
-- **`SKILL.md`** — The core of the plugin. Defines the client context workflow, agent prompts, research methodology, synthesis logic, report generation, and client delivery instructions. This is what Claude Code executes when you invoke `/vendor-review`.
-- **`references/scoring.md`** — The weighted scoring rubric. Edit this to change dimension weights, add dimensions, or modify the 1–5 scoring criteria.
-- **`references/report-template.md`** — The markdown template for generated reports. Edit this to change report structure, add sections, or modify formatting.
-- **`references/approved-services-template.md`** — Template for client approved-services trackers. Created automatically for new clients.
-- **`scripts/make-pdf.sh`** — Converts a report under `./reports/` to PDF. The skill pre-approves this script rather than pandoc, so keep any new pandoc options inside it.
-- **`.claude/settings.json`** — Pre-approves WebFetch and WebSearch across all domains so research agents don't trigger per-domain permission prompts. It applies only to sessions started inside this repository; a marketplace install does not carry it, so add `WebFetch` and `WebSearch` to `permissions.allow` in your own settings if research agents prompt for each domain.
-
-## Customization
-
-### Changing Dimension Weights
-
-Edit `references/scoring.md` and update the weights in the dimensions table. Weights must total 100%. Then update the corresponding scorecard table in `references/report-template.md` to match.
-
-### Adding a Dimension
-
-1. Add the dimension to the weights table in `references/scoring.md`
-2. Add a dimension-specific rubric in `references/scoring.md` (see AI Risk and Export Control Risk for examples)
-3. Add a scorecard row and detailed findings section in `references/report-template.md`
-4. Add a research agent in `SKILL.md` with appropriate WebSearch/WebFetch instructions
-5. Add the dimension to the scoring list in the Synthesis Phase of `SKILL.md`
-
-### Changing the Report Format
-
-Edit `references/report-template.md`. The template uses standard markdown with tables. Keep the scorecard table structure intact — the synthesis phase references it.
-
-### Changing Research Depth
-
-Each agent's research instructions are in `SKILL.md` under the "Research Phase" section. You can add or remove WebSearch queries, adjust what each agent looks for, or add entirely new agents.
 
 ## Contributing
 
-### Submitting Changes
+1. Fork the repository and create a feature branch.
+2. Make your changes. Shared behavior belongs in `shared/workspace.md`, not repeated in each skill.
+3. Validate with `claude plugin validate .`, then test with `claude --plugin-dir .` against a scratch workspace created by `/tprm:tprm-setup`.
+4. Bump `version` in `.claude-plugin/plugin.json`, since marketplace users only receive changes when the version changes.
+5. Open a pull request.
 
-1. Fork the repository on GitHub
-2. Create a feature branch:
-   ```bash
-   git checkout -b feature/add-supply-chain-dimension
-   ```
-3. Make your changes
-4. Test by running `/vendor-review` against a known vendor and verifying the output
-5. Commit with a descriptive message:
-   ```bash
-   git commit -m "Add supply chain risk dimension with SBOM analysis"
-   ```
-6. Push and open a pull request:
-   ```bash
-   git push origin feature/add-supply-chain-dimension
-   gh pr create --title "Add supply chain risk dimension" --body "..."
-   ```
-
-### Releasing
-
-Bump `version` in `.claude-plugin/plugin.json` with every change you want users to receive. Marketplace installs stay on their cached copy until the version string changes, so a merged change without a version bump never reaches them.
-
-The marketplace catalog lives in the [Konda-Security/www](https://github.com/Konda-Security/www) repo at `static/claude/marketplace.json` and tracks this repo's `main` branch. A release is a merge to `main` with a bumped version; the catalog only needs editing when the plugin's name, description, or source changes.
-
-### What Makes a Good Contribution
-
-- **New dimensions** — with rubric, template section, and research agent
-- **Better search queries** — more targeted WebSearch queries that surface better evidence
-- **Template improvements** — clearer report structure, better tables, additional context
-- **Scoring refinements** — improved rubric criteria based on real-world assessment experience
-
-### Testing Changes
-
-There are no automated tests — the plugin is a set of prompt instructions. To test:
-
-1. Run `/vendor-review` against a well-known vendor (e.g., a major cloud provider with extensive public security documentation)
-2. Verify all dimensions are scored with cited evidence
-3. Check that the report follows the template structure
-4. Confirm the overall score math is correct (weighted average)
-5. Read the executive summary — would a non-technical executive understand it?
+The marketplace catalog lives in the [Konda-Security/www](https://github.com/Konda-Security/www) repo at `static/claude/marketplace.json` and tracks this repo's `main` branch, so a release is a merge to `main` with a bumped version.
 
 ## Limitations
 
-- Based on **publicly available information only** — no access to internal controls, vendor questionnaire responses, or confidential reports
-- **Point-in-time assessment** — reflects what is publicly visible on the assessment date, not continuous monitoring
-- Does not include **penetration testing** or technical vulnerability assessment
-- **Private company financial data** is limited to public signals (funding rounds, employee trends, customer logos)
-- **Sanctions screening** uses web search, not direct OFAC/BIS API access — results should be verified against authoritative databases for compliance decisions
-- **AI risk assessment** depends on vendor disclosure — vendors that use AI without public acknowledgment will score as "Unable to Assess" rather than receiving a low score
+- Reviews use **publicly available information** and whatever evidence the vendor provides; they don't include internal control testing or penetration testing.
+- Every record is a **point-in-time** assessment. Re-reviews look for changes, but this isn't continuous monitoring.
+- **Sanctions screening** uses web search, not direct OFAC or BIS access; verify against authoritative sources before relying on it.
+- **AI risk** depends on vendor disclosure. Vendors that use AI without saying so score as Unable to Assess rather than low.
+- Records are **AI-assisted** and should be reviewed by a person before a decision is made.
 
 ## License
 

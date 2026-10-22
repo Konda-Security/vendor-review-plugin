@@ -1,16 +1,17 @@
 #!/usr/bin/env bash
-# Render a vendor review report to PDF with a fixed set of pandoc options.
+# Render a TPRM record (markdown) to PDF with a fixed set of pandoc options.
 #
-# Usage: make-pdf.sh reports/<vendor-slug>-<YYYY-MM-DD>.md
+# Usage: make-pdf.sh <path/to/record>.md
 #
-# Writes the PDF next to the markdown file and prints its path. The skill
-# pre-approves this script rather than pandoc itself, because pandoc flags
-# such as --filter and --lua-filter run arbitrary programs. Raw TeX and
-# HTML are disabled so text in a report can't pull local files into the PDF.
+# The path must be relative to the current directory. Writes the PDF next to
+# the markdown file and prints its path. The skills pre-approve this script
+# rather than pandoc itself, because pandoc flags such as --filter and
+# --lua-filter run arbitrary programs. Raw TeX and HTML are disabled so text
+# in a record can't pull local files into the PDF.
 set -euo pipefail
 
 if [[ $# -ne 1 ]]; then
-  echo "usage: $(basename "$0") reports/<name>.md" >&2
+  echo "usage: $(basename "$0") <path/to/record>.md" >&2
   exit 2
 fi
 
@@ -21,9 +22,13 @@ case "$input" in
     echo "error: path must not contain '..': $input" >&2
     exit 2
     ;;
-  reports/*.md | ./reports/*.md) ;;
+  -* | /* | '~'*)
+    echo "error: expected a path relative to the current directory, got: $input" >&2
+    exit 2
+    ;;
+  *.md) ;;
   *)
-    echo "error: expected a .md file under ./reports/, got: $input" >&2
+    echo "error: expected a .md file, got: $input" >&2
     exit 2
     ;;
 esac

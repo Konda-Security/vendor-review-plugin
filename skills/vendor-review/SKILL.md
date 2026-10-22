@@ -1,14 +1,14 @@
 ---
 name: vendor-review
-description: Conduct a comprehensive vendor security and risk assessment. Use when the user invokes "/vendor-review", or asks to "review a vendor", "assess vendor risk", "vendor due diligence", "vendor security assessment", "third-party risk assessment", or "evaluate a vendor". Requires a URL or company name as input.
+description: Full vendor security and risk assessment with parallel research agents, scored across 10 weighted dimensions. Use when the user asks to "review a vendor", "assess vendor risk", "vendor due diligence", "vendor security assessment", or "evaluate a vendor" in depth. For a fast triage use vendor-quick-check; for a vendor reviewed before use vendor-rereview.
 allowed-tools:
   - WebFetch
   - WebSearch
   - Agent
-  - Read(/${CLAUDE_SKILL_DIR}/**)
-  - Edit(./reports/**)
-  - Bash(${CLAUDE_SKILL_DIR}/scripts/make-pdf.sh *)
-argument-hint: <vendor-url-or-name>
+  - Read(/${CLAUDE_PLUGIN_ROOT}/**)
+  - Bash(${CLAUDE_PLUGIN_ROOT}/scripts/make-pdf.sh *)
+  - Bash(gh issue view *)
+argument-hint: <vendor-url-or-name> [issue number]
 ---
 
 # Vendor Security & Risk Assessment
@@ -19,22 +19,24 @@ You are conducting a thorough third-party vendor security and risk assessment. Y
 
 The user provided: $ARGUMENTS
 
-If this is a URL, use it as the vendor's primary website. If it's a company name, search for the company and confirm the correct website before proceeding.
+If this is a URL, use it as the vendor's primary website. If it's a company name, search for the company and confirm the correct website before proceeding. If an issue number or issue URL was given, it is the intake request.
 
-If no argument was provided, ask the user for the vendor URL or company name before proceeding.
+If no vendor was provided, ask the user for the vendor URL or company name before proceeding.
 
-## Client Context
+## Workspace
 
-Before starting research, ask the user:
+Read `${CLAUDE_PLUGIN_ROOT}/shared/workspace.md` and follow it to find the workspace and read `tprm.json`. The workspace gives you the client name, where to write the record, the evidence folder, and how to produce the PDF. Don't ask the user for any of these.
 
-1. **Which client is this vendor review for?** (e.g., a client name, project name, or "internal use")
-2. **Where should the report and PDF be delivered?** Ask for the client's vendor review directory path (e.g., `~/clients/acme-corp/security/vendor-review/reviews/`).
+## Request Context
 
-If the user has done reviews in this session before, offer the same client and path as a default. If the user says "same client" or "same as before," reuse the previous values.
+Gather the facts that scope the review. Use what is already available and ask only for what is missing, in one message:
 
-Once the client directory is confirmed:
-- Check if an `approved-services.md` file exists in the parent directory of the reports path (e.g., one level up from `reviews/`). If it does not exist, offer to create one from the template at `${CLAUDE_SKILL_DIR}/references/approved-services-template.md`, substituting the client name.
-- Store the client name and delivery path for use in the Post-Report phase.
+- **Intake request:** if an issue was given, read it with `gh issue view <number> --json title,body,url` (add `--repo <github.repo>` when configured). Issue forms put each answer under a `### <question>` heading. Otherwise ask whether there is a request, or record "none".
+- **Intended use and data:** what the vendor will do for the client and which data it will receive or reach.
+- **Entities:** when `tprm.json` configures `entities`, which one applies.
+- **Existing records:** Glob `<reviewsDir>/<slug>-*.md`. If a full review already exists, tell the user and suggest `/tprm:vendor-rereview` instead; continue only if they want a new full review. If an evidence review exists, read it and use its findings in the Compliance dimension.
+- **Unreviewed evidence:** if `<evidenceDir>/<slug>/` has documents but no evidence review exists, suggest running `/tprm:vendor-evidence-review` first, since vendor-provided SOC 2 reports change the Compliance score.
+- **Tiers and related vendors:** if the vendor sells tiers or editions with materially different terms (for example consumer, business, and enterprise plans), assess each tier the client might use and score them separately. If the vendor is part of a family the client is reviewing together, such as an MSP and the tools it runs, list the related records.
 
 ## Preparation
 
@@ -187,24 +189,20 @@ After all agents return, synthesize their findings:
 
 4. **Determine the risk rating and recommendation:**
    - 4.5–5.0: Minimal Risk → Approve
-   - 3.5–4.4: Low Risk → Approve with standard terms
-   - 2.5–3.4: Moderate Risk → Conditional approval
+   - 3.5–4.4: Low Risk → Approve (standard terms; list any configuration requirements)
+   - 2.5–3.4: Moderate Risk → Approve with Conditions
    - 1.5–2.4: High Risk → Discourage
    - 1.0–1.4: Critical Risk → Do Not Approve
 
-5. **Identify the top 3 risk factors** and propose specific mitigations.
+   When tiers were scored separately, give each tier its own score, rating, and recommendation in the Tier Ratings table, and base the headline on the tier the client intends to use.
+
+5. **Identify the top 3 risk factors** and propose specific mitigations. When the review is for a vendor family, collect the requirements that apply to the parent vendor in one place.
+
+6. **Set a re-assessment date** when the findings call for one sooner than the configured cadence, such as a remediation deadline or an expected new SOC 2 report, and state it in the Executive Summary so `/tprm:vendor-tracker` can use it as Next Review.
 
 ## Report Generation
 
-Generate the report using the template from `references/report-template.md`. Write the report to:
-
-```
-./reports/<vendor-slug>-<YYYY-MM-DD>.md
-```
-
-Where `<vendor-slug>` is the vendor name in lowercase kebab-case and `<YYYY-MM-DD>` is today's date.
-
-Write it with the Write tool, which creates the `reports/` directory if it does not exist.
+Generate the report using the template from `references/report-template.md`. Write it to `<reviewsDir>/<vendor-slug>-<YYYY-MM-DD>.md` inside the workspace, where `<vendor-slug>` is the vendor name in lowercase kebab-case and `<YYYY-MM-DD>` is today's date. Follow the file-naming and metadata rules in the workspace specification.
 
 ### Report Requirements
 
@@ -218,29 +216,18 @@ Write it with the Write tool, which creates the `reports/` directory if it does 
 
 ## Post-Report
 
-After writing the report to `./reports/`:
-
 ### 1. Generate PDF
-Run the bundled script exactly as written, unquoted, with the report path relative to the working directory:
-```
-${CLAUDE_SKILL_DIR}/scripts/make-pdf.sh reports/<vendor-slug>-<YYYY-MM-DD>.md
-```
-The script writes `reports/<vendor-slug>-<YYYY-MM-DD>.pdf` with fixed pandoc options, trying xelatex, then pdflatex, then wkhtmltopdf. Do not call pandoc directly. If the script reports that pandoc or a PDF engine is missing, tell the user and suggest they install pandoc and a LaTeX engine such as MacTeX.
+Produce the PDF as described under "Producing PDFs" in the workspace specification. Built-in PDF renderer: `${CLAUDE_PLUGIN_ROOT}/scripts/make-pdf.sh`. Do not call pandoc directly.
 
-### 2. Deliver to Client Directory
-Copy both the markdown and PDF to the client delivery directory confirmed in the Client Context step. Verify the files arrived with `ls -la`.
-
-### 3. Update Approved Services Tracker
-If an `approved-services.md` exists in the client's vendor review directory (parent of the reports path):
-- Read the current file
-- Add or update the row for the assessed vendor with: vendor name, service description, SOC 2 status, review date, and status (Approved/Conditional/Discouraged/Denied) based on the risk score, including the score and a brief note on key conditions
-- Update the "Last reviewed" date
-- Ask the user to confirm the update before writing
-
-### 4. Display Summary
+### 2. Display Summary
 1. Display the **Executive Summary** and **Scorecard** in the conversation.
-2. Tell the user the full report path (both local and client directory).
+2. Tell the user the record path and the PDF path.
 3. Ask if the user wants to drill deeper into any specific dimension or if any findings need correction.
+
+### 3. Hand Off the Decision
+This skill does not edit the tracker. The decision belongs to the client, so end by suggesting the next steps:
+- `/tprm:vendor-tracker record <record path>` to record the decision in the tracker.
+- `/tprm:vendor-github-sync push` to post the result to the intake issue and commit the record, when the workspace uses GitHub.
 
 ## Important Guidelines
 
